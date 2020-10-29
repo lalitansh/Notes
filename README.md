@@ -8,6 +8,6 @@ This is simple Note app which does follwing ->
 you can also update, delete and archive searched Notes
 
 
-# Video Example
+# Screenshots and GIF
 ![GIF-201029_152631](https://user-images.githubusercontent.com/68955767/97553823-26fe0280-1993-11eb-88fc-3d254ce37c73.gif)
 
