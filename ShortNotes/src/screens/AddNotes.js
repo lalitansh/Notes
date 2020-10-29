@@ -149,11 +149,11 @@ class AddNotes extends React.Component{
   return(
     <>
 
-    { !data ? (<View style = {styles.appHeader}>
-      <Text style = {{fontSize : 17,fontWeight:'400', color : 'white', alignSelf:'center',marginBottom:13.5}}>
+    { !data ? (<View style = {styles.appHeader}> 
+      <Text style = {styles.headerText}>
       Add Note</Text>
     </View>) :  (<View style = {styles.appHeader}>
-      <Text style = {{alignSelf : 'center', fontSize : 17,fontWeight:'400', color : 'white', marginBottom : 13.5}}>
+      <Text style = {styles.headerText}>
       Update Note</Text>
     </View>) }
 
@@ -270,23 +270,26 @@ const styles = StyleSheet.create({
       android : {
         backgroundColor:'#219653',
         position: 'absolute',
-        //alignSelf : 'flex-start',
         alignItems : 'center',
         justifyContent:'center',
         right:20,
         top:42,
         borderColor : '#ffff',
-
         height : 42,
         width : 42,
         borderRadius : 21
       },
       ios:{
-        backgroundColor : '#219653',
-        position : 'absolute',
-        right:0,
-        top:40,
-        margin:10,
+        backgroundColor:'#219653',
+        position: 'absolute',
+        alignItems : 'center',
+        justifyContent:'center',
+        right:20,
+        top:48,
+        borderColor : '#ffff',
+        height : 42,
+        width : 42,
+        borderRadius : 21
       }
     })
 
@@ -349,6 +352,24 @@ const styles = StyleSheet.create({
     })
 
   },
+  headerText: {
+    ...Platform.select({
+      android : {
+        fontSize : 17,
+        fontWeight:'400', 
+        color : 'white', 
+        alignSelf:'center',
+        marginBottom:13.5
+      },
+      ios: {
+        fontSize : 17,
+        fontWeight:'400', 
+        color : 'white', 
+        alignSelf:'center',
+        marginTop:35
+      }
+    })
+  }
 })
 
 export default (AddNotes)
