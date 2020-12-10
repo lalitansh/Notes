@@ -1,6 +1,8 @@
-import {ADD_NOTE,DELETE_NOTE,ARCHIVE_NOTE,SEARCHED_NOTES,UNARCHIVE_NOTES} from '../actions/types';
+import {ADD_NOTE,DELETE_NOTE,ARCHIVE_NOTE,SEARCHED_NOTES,
+  ADD_ARRAY_NOTES,ADD_ARRAY_ARCHIVE_NOTES,RESET_ARCHIVE_STATE,
+RESET_NOTE_STATE} from '../actions/types';
 const initialState = {
-  notes : [],
+  archiveNotes : [],
   filteredNotes:[],
   notesList : [],
 }
@@ -25,8 +27,8 @@ const notesReducer = (state = initialState, action) => {
     case ARCHIVE_NOTE : 
     return{
       ...state,
-      notes: [
-        ...state.notes, action.data
+      archiveNotes: [
+        ...state.archiveNotes, action.data
       ]
     }
   case SEARCHED_NOTES : 
@@ -36,14 +38,35 @@ const notesReducer = (state = initialState, action) => {
         ...state.filteredNotes, action.data
       ]
     }
-    case UNARCHIVE_NOTES : 
+    case ADD_ARRAY_NOTES : 
     return{
       ...state,
-      notesList: [
-        ...state.notesList, action.data
+      notesList : [
+        ...state.notesList, ...action.data
       ]
     }
+    case ADD_ARRAY_ARCHIVE_NOTES : 
+    return{
+      ...state,
+      archiveNotes : [
+        ...state.archiveNotes, ...action.data
+      ]
+    }
+
+    case RESET_NOTE_STATE : 
+    return{
+      ...state,
+      notesList : initialState.notesList
+    }
+
+    case RESET_ARCHIVE_STATE : 
+    return{
+      ...state,
+      archiveNotes : initialState.archiveNotes
+    }
+
     
+
     default :
     return state;
   }

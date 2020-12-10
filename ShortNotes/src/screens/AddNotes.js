@@ -39,22 +39,27 @@ class AddNotes extends React.Component{
 
 
   componentDidMount(){
-    getValuesInLocalNote();
-    getCurrentDateTime();
+    this.getValuesInLocalNote()
+    getCurrentDateTime()
   }
 
+
+  getValuesInLocalNote=async()=>{
+    try{
+     if (data){
+       this.state.noteTitle = data.noteTitle
+       this.state.noteDescription = data.noteDescription
+     }
+    }catch(e){
+     console.log('error',e)
+    }
+   }
 
 
   render(){
     const data = this.props.route.params.item; // Received note for updation
 
-     getValuesInLocalNote=()=>{
-       if (data){
-        this.state.noteTitle = data.noteTitle
-        this.state.noteDescription = data.noteDescription
-      }
-    }
-
+   
   // Get Current Data and Time
 
   getCurrentDateTime=()=>{
@@ -132,8 +137,8 @@ class AddNotes extends React.Component{
   }
 
     const onSaveNote=(noteTitle,noteDescription,date,time)=>{
-
-    this.props.route.params.addNotes({noteTitle, noteDescription,date,time})
+    let id = Math.random()
+    this.props.route.params.addNotes({id,noteTitle, noteDescription,date,time})
     this.props.navigation.setParams('EmbedArchiveStack',{name:this.name})
     this.props.navigation.goBack()
   }
@@ -170,6 +175,8 @@ class AddNotes extends React.Component{
      mode = 'flat'
      onChangeText =  {(text) => this.setState({noteTitle : text})}
      style = { !data ? styles.title : [styles.title,underlineColor="transparent"] }
+     returnKeyType = 'none'
+     autoCapitalize = 'none'
      />
 
     <TextInput
@@ -182,6 +189,9 @@ class AddNotes extends React.Component{
      scrollEnabled = {true}
      returnKeyLabel = 'done'
      blurOnSubmit = {true}
+     returnKeyType = 'none'
+     autoCapitalize = 'none'
+     
     />
     </>) :
 
@@ -195,6 +205,8 @@ class AddNotes extends React.Component{
     onChangeText =  {(text) => this.setState({noteTitle : text})}
     theme={{ colors: { primary: 'red',underlineColor:'transparent',}}}
     style =  {styles.updateTitle }
+    returnKeyType = 'none'
+    autoCapitalize = 'none'
     />
 
    <TextInput
@@ -209,6 +221,8 @@ class AddNotes extends React.Component{
     scrollEnabled = {true}
     returnKeyLabel = 'done'
     blurOnSubmit = {true}
+    returnKeyType = 'none'
+    autoCapitalize = 'none'
    />
    </>) }
 

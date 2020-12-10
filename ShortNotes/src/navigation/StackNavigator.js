@@ -11,22 +11,22 @@ import React,{Component} from 'react';
 
 export function StackNavigator({navigation}){
   return(
-<Stack.Navigator
-      initialRouteName="ViewNotes"
-      headerMode = 'none'
-      //screenOptions={{ gestureEnabled: false }}
-      mode = "modal"
-    >
-      <Stack.Screen
-        name="ViewNotes"
-        component={ViewNotes}
-        options={{ title: 'My app' }}
-      />
-      <Stack.Screen
-        name="AddNotes"
-        component={AddNotes}
-        //initialParams={{ user: 'me' }}
-      />
+      <Stack.Navigator
+          initialRouteName="ViewNotes"
+          headerMode = 'none'
+          //screenOptions={{ gestureEnabled: false }}
+          mode = "modal"
+        >
+        <Stack.Screen
+          name="ViewNotes"
+          component={ViewNotes}
+          options={{ title: 'My app' }}
+        />
+        <Stack.Screen
+          name="AddNotes"
+          component={AddNotes}
+          //initialParams={{ user: 'me' }}
+        />
     </Stack.Navigator>
   )
 }

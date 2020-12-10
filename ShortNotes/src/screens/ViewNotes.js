@@ -1,4 +1,5 @@
 import React,{Component} from 'react';
+import {thiss,notThis} from './functions'
 import {
   StyleSheet,
   View,
@@ -16,12 +17,21 @@ import {
   Image,
 
 } from 'react-native';
-import {Card, FAB, Appbar,Snackbar,Provider} from 'react-native-paper';
+import {Card,Snackbar} from 'react-native-paper';
 import { any, string, bool,number } from 'prop-types';
 import Colors from '../utils/Colors';
-//import AsyncStorage from '@react-native-community/async-storage'
 import {connect} from 'react-redux';
-import {archive_Notes,add_Notes} from '../actions/notes'
+import {archive_Notes,add_Notes,add_Array_Notes,Reset_Note_State} from '../actions/notes';
+import AsyncStorage from '@react-native-community/async-storage';
+import SplashScreen from 'react-native-splash-screen';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import {Storage} from '../utils/Constants';
+import {_setItem, _getItem} from './functions';
+
+
+
+
+
 
 const DEVICE_WIDTH = Dimensions.get('window').width;
 
@@ -34,11 +44,11 @@ constructor(props) {
   this.spinValue = new Animated.Value(0)
   this.searchingText = '';
   this.newData = []
+  
 }
 
 state = {
   animationValue : new Animated.Value(1),
-  notes : [],
   note : any,
   selectionMode : false,
   tempNote:[],
@@ -46,14 +56,15 @@ state = {
   data : [],
   gridView : true,
   visible : false,
-  isFromAddNote : false
+  isFromAddNote : false,
+  onlyOnce : true
 }
 
 
 setOnFocus=async()=>{
+  SplashScreen.hide()
   this.props.notes.forEach((item,i)=> {
     item.selected = false
-    item.id = i+1;
   })
   this.setState({searchBarActive : false})
   this.setState({data:this.props.notes})
@@ -70,16 +81,45 @@ setOnFocus=async()=>{
   }
 }
 
-componentWillUnmount(){
-  console.log('called componentWillUnmount')
+
+
+shouldComponentUpdate(){
+  if (this.props.notes.length > 0) {
+    console.log('this.prop',this.props.notes)
+  }
+  return true;
+}
+
+async componentWillUnmount(){
+  
+  //console.log('called componentWillUnmount ViewNotes')
+ // await AsyncStorage.removeItem('mainNotes')
 }
 
 componentDidMount(){
+  
   this.focusListener = this.props.navigation.addListener('focus', () => {
     this.setOnFocus()
-    console.log('called ComponentDidMount')
-
+    //console.log('called ComponentDidMount On Focus')
+   
   })
+  thiss()
+  notThis()
+  this.setLocalDb()
+}
+
+// Initially setting value of local database
+
+setLocalDb =async()=> {
+  let get = await _getItem() 
+  console.log('get',get)  
+}
+
+ // update Async storage data 
+
+ updateAsyncStorage=async()=>{
+  _setItem(this.props.notes)
+   
 }
 
 render() {
@@ -89,7 +129,7 @@ render() {
   const toggleSelect = async (item)=>{
 
       this.setState({selectionMode : true})
-      console.log('from LongPress',item)
+      //console.log('from LongPress',item)
 
         this.props.notes.map(i => {
           if (item === i){
@@ -116,7 +156,7 @@ render() {
 
     if(!this.isFromUpdate){
       if (this.searchingText.length > 0) {
-          this.newData =  this.state.notes.filter(item => {
+          this.newData =  this.props.notes.filter(item => {
             const itemData = `${item.noteTitle.toUpperCase()}
 
             ${item.noteDescription.toUpperCase()}`;
@@ -129,7 +169,7 @@ render() {
             this.setState({ data: this.newData });
 
     }else {
-      this.setState({ data: this.state.notes });
+      this.setState({ data: this.props.notes });
       }
     }
   };
@@ -170,9 +210,11 @@ render() {
 
   //Add New Note
     const addNotes=(note)=> {
-        note.id = this.props.notes.length +1 ;
+        
         this.props.addToNotes(note)
           this.setState({isFromAddNote:true})
+          this.updateAsyncStorage()
+          this.shouldComponentUpdate();
         showHideSnack()
   }
 
@@ -180,13 +222,12 @@ render() {
 
   const updateNote = (note) => {
 
-    this.props.notes.sort(function(a, b) {
-      return a.id > b.id
-    })
+    const index = this.props.notes.indexOf(note.id);
+    this.props.notes.splice(index, 1);
 
-    this.props.notes.splice(note.id - 1, 1);
     this.props.addToNotes(note)
     this.setState({data: this.props.notes})
+    
 
     if (this.state.searchBarActive){
       if(this.newData.length > 0) {
@@ -205,10 +246,8 @@ render() {
 
     showHideSnack()
 
-    //makeNewNotesByRegularId();
-
+    this.updateAsyncStorage()
   }
-
 
   // Remove Item from Notes
 
@@ -254,24 +293,13 @@ render() {
             }
         }
 
-
-
-  makeNewNotesByRegularId();
    // transfor value in searchable array
   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   this.setState({selectionMode:false})
   this.setState({tempNote: []})
-
+  this.updateAsyncStorage()
   }
 
-
-  // Update with new Id Notes after deleting Notes
-
-  const makeNewNotesByRegularId=()=> {
-    this.props.notes.forEach((item, i) => {
-      item.id = i + 1; // providing note id in notes array
-    });
-  }
 
 // Alert for delete Note
 
@@ -282,7 +310,7 @@ render() {
       [
         {
           text : 'cancel',
-          onPress : ()=>console.log('cancel Pressed and total notes',this.state.notes),
+          onPress : ()=>console.log('cancel Pressed and total notes',this.props.notes),
           style : 'cancel'
         },
         {
@@ -293,7 +321,7 @@ render() {
     )
   }
 
-  const archiveArray=async()=> {
+  const archiveArray= async ()=> {
 
     try {
       this.archiveNotes = this.state.tempNote
@@ -302,9 +330,7 @@ render() {
         this.props.addToArchive(item)
       })
 
-
       this.setState({data:this.state.data})
-      makeNewNotesByRegularId();
 
        // transfor value in searchable array
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -334,8 +360,14 @@ render() {
               }
           }
 
+          await AsyncStorage.setItem(Storage.Archive,JSON.stringify(this.props.archiveNotes))
+          .then(json => console.log('success !', json))
+          .catch(error => console.log('error in storing',error))
+
+      this.updateAsyncStorage()
+
     }catch(err){
-      console.log(err)
+      console.log('error...',err)
     }
   }
 
@@ -345,7 +377,6 @@ render() {
     if (!this.state.searchBarActive){
       this.setState({searchBarActive:true})
       this.setState({data:this.props.notes})
-      this.setState({notes:this.props.notes})
     }else{
       this.setState({searchBarActive:false})
     }
@@ -371,6 +402,7 @@ render() {
 
   return(
       <>
+      
 {!this.state.selectionMode ?
     <View style = {styles.appHeader}>
 
@@ -428,7 +460,7 @@ render() {
     <View style = {styles.appHeader}>
    <View style = {{flex : 1,justifyContent : 'flex-end', alignItems : 'center',marginBottom : 15, marginLeft : (DEVICE_WIDTH/3) + 10}}>
 
-      <Text style = {{fontSize : 17,fontWeight:'400', color : 'white'}}>{this.state.tempNote.length} selected</Text>
+   <Text style = {{fontSize : 17,fontWeight:'400', color : 'white'}}>{this.state.tempNote.length} selected</Text>
 
    </View>
 
@@ -469,6 +501,7 @@ render() {
       clearIcon = 'delete'
       clearButtonMode='always'
       style = {styles.searchBar}
+      autoFocus = {this.state.searchBarActive ? true : false}
       />
       </View>
     }
@@ -476,10 +509,11 @@ render() {
     <View style = {styles.container}>
       {this.props.notes.length == 0 ? (
       <View style = {styles.titleContainer}>
+      <AntDesign name = 'delete' size = {DEVICE_WIDTH/3} color = {Colors.indigo100} />
       <Text style = {styles.title}>
-        You do Not Have Any Notes
+        No Notes in List !
       </Text>
-      <Text style = {{bottom : 30, left:10, position:'absolute', fontSize:15, fontWeight:'800'}}>
+      <Text style = {styles.endHeading}>
         -By Lalitansh
       </Text>
       <View>
@@ -488,7 +522,7 @@ render() {
     </View> ) : (
 
         <FlatList
-       keyExtractor={(item) => item.id.toString() }
+       keyExtractor={(item) => item.id }
 
         numColumns={this.state.gridView ? 2 : 1}
         key={(this.state.gridView ? 'h' : 'v')}
@@ -501,15 +535,17 @@ render() {
 
       renderItem={({item, index}) =>{
           return(
-
-            <View style = {this.state.gridView ? styles.cardParentGridView : styles.cardParentListView }>
-
+    
             <Card
 
               style = { this.state.gridView ?  [styles.myCardNormal,{backgroundColor: item.selected ? Colors.APP_GRAY :'white'  }] :  [styles.myListCard,{backgroundColor: item.selected ? Colors.APP_GRAY :'white'  }] }  key={index}  onLongPress = {()=> onLongPress(item)} onPress = {()=> onPress(item) } >
-
+              {item.selected && this.state.gridView ?
+              <AntDesign style = {{alignSelf:'flex-end', position:'absolute' }} name = 'checkcircle' size = {30} color = {Colors.indigo800} /> :
+              null
+              }
              <Animated.View style = {{flex:1,alignItems: 'flex-start',marginLeft : 10, transform: [{rotate: spin}] }}>
-             <Text numberOfLines = {1} style = {{marginBottom:13, marginTop:5, fontSize : 17, fontWeight : '500',width :'60%'}}>{item.noteTitle}</Text>
+             
+             <Text numberOfLines = {1} style = {styles.noteTitleText}>{item.noteTitle}</Text>
              <Text ellipsizeMode = 'tail' numberOfLines = {this.state.gridView ? 5 : 1} style = { this.state.gridView ? styles.descTextGrid : styles.descTextList }>{item.noteDescription}</Text>
              <View style = {this.state.gridView ? styles.dateParentGridView : styles.dateParentListView}>
              <Text style = {this.state.gridView ? styles.dateGrid : styles.dateList}>{item.date}</Text>
@@ -521,7 +557,7 @@ render() {
             </View>
              </Animated.View>
              </Card>
-             </View>
+            
 
           )
           }
@@ -556,7 +592,7 @@ render() {
 const styles = StyleSheet.create({
   container : {
     flex: 1,
-    backgroundColor : 'white',
+    backgroundColor : '#f4f4f6',
      paddingVertical: 10,
      paddingHorizontal: 10,
   },
@@ -579,7 +615,13 @@ const styles = StyleSheet.create({
     })
 
   },
-
+  noteTitleText:{
+    marginBottom:13, 
+    marginTop:5, 
+    fontSize : 17, 
+    fontWeight : '500',
+    width :'60%',
+  },
   titleContainer : {
     alignItems:'center',
     justifyContent:'center',
@@ -595,7 +637,7 @@ const styles = StyleSheet.create({
     //marginRight : 20,
   },
   title : {
-    fontSize : 20,
+    fontSize : 15,
   },
   parent: {
     width: '100%',
@@ -609,6 +651,7 @@ const styles = StyleSheet.create({
         textAlign : 'right',
         fontSize:13,
         fontWeight:'200',
+        color : Colors.grey500
       }
     })
   },
@@ -617,7 +660,8 @@ const styles = StyleSheet.create({
       default: {
         fontSize:12,
         fontWeight:'200',
-        marginRight : 3
+        marginRight : 3,
+        color : Colors.grey500
       }
     })
   },
@@ -627,6 +671,7 @@ const styles = StyleSheet.create({
     fontWeight:'200',
     marginRight : 5,
     marginTop : 2,
+    color : Colors.grey500
   },
   dateParentGridView: {
     justifyContent : 'flex-end',
@@ -650,21 +695,18 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
   },
   fab : {
-    backgroundColor:'#219653',
+    backgroundColor:Colors.indigo300, //#219653
     position: 'absolute',
     alignSelf : 'flex-end',
     alignItems : 'center',
     justifyContent:'center',
     right:30,
-    bottom:35,
+    bottom:42,
     borderColor : '#ffff',
-    borderWidth : 4,
     height : 60,
     width : 60,
-    borderRadius : 30
-        // height:70,
-    // width:70,
-    // borderRadius:35,
+    borderRadius : 30,
+    elevation: 5,
   },
   listTitle : {
     fontSize : 20,
@@ -690,7 +732,7 @@ const styles = StyleSheet.create({
   },
   cardParentGridView : {
     borderRadius : 10,
-    backgroundColor:'white',
+    backgroundColor:Colors.white,
     //borderWidth : 0.3,
     borderColor: Colors.green3000,
     borderWidth : 0.3,
@@ -730,30 +772,48 @@ cardParentListView : {
     }
   })
 },
-  myCardNormal: {
-    //padding : 5,
-    ...Platform.select({
-      android : {
-          flex:1,
-        width: '98%',
-        margin: '1%',
-        aspectRatio: 1,
-
-      },
-      ios : {
-        flex:1,
-      width: '98%',
-      margin: '1%',
-      aspectRatio: 1,
-
-      }
-    })
+myCardNormal: {
+  ...Platform.select({
+    default : {
+      borderRadius : 10,
+  backgroundColor:Colors.white,
+  //borderColor: Colors.black,
+  //borderWidth : 0.3,
+  width: '48%',
+  margin: '1%',
+  aspectRatio: 1, 
+  shadowColor: '#6b6162',
+  shadowOffset: {
+    width: 0,
+    height: 7,
   },
+  shadowOpacity: 0.60,
+  shadowRadius: 5,
+  elevation: 5,
+    }
+  })
+  
+},
     myListCard : {
-      width: '99.5%',
-      height : '99%',
-
-  },
+      borderRadius : 5,
+      backgroundColor:'white',
+      borderWidth : 0.3,
+      width: '98%',
+      marginTop: '1.7%',
+      aspectRatio: 5/1,
+      ...Platform.select({
+        default : {
+          shadowColor: '#6b6162',
+          shadowOffset: {
+          width: 1,
+          height: 0.5,
+          },
+          shadowOpacity: 0.60,
+          shadowRadius: 5,
+          elevation: 7,
+        }
+      })
+    },
   myCardSelected: {
       //padding : 5,
       ...Platform.select({
@@ -785,13 +845,21 @@ cardParentListView : {
       margin : 5,
       paddingVertical:-10,
     },
+    endHeading : {
+      bottom : 30, 
+      left:10, 
+      position:'absolute', 
+      fontSize:15, 
+      fontWeight:'800',
+     fontFamily : 'serif'
+    }
 });
 
 
 const mapStateToProps = (state) => {
   console.log('add Note state',state);
   return {
-    archiveNotes : state.notesReducer.notes,
+    archiveNotes : state.notesReducer.archiveNotes,
     notes : state.notesReducer.notesList
   }
 }
@@ -800,7 +868,9 @@ const mapDispatchToProps = dispatch => {
   //console.log(state);
   return {
     addToArchive : (notes) => dispatch(archive_Notes(notes)),
-    addToNotes : (note) => dispatch(add_Notes(note))
+    addToNotes : (note) => dispatch(add_Notes(note)),
+    addArrayToNotes : (note) => dispatch(add_Array_Notes(note)),
+    ResetNoteState : ()=> dispatch(Reset_Note_State()),
   }
 }
 

@@ -16,7 +16,7 @@ import {
   Image,
 
 } from 'react-native';
-import {Card, FAB, Appbar,Snackbar,Provider} from 'react-native-paper';
+import {Card,Snackbar} from 'react-native-paper';
 import archiveNotes from './ViewNotes';
 import { any, string, bool,number } from 'prop-types';
 import { darkorange } from 'color-name';
@@ -24,7 +24,12 @@ import Colors from '../utils/Colors';
 import Icon from 'react-native-vector-icons';
 //import AsyncStorage from '@react-native-community/async-storage'
 import {connect} from 'react-redux';
-import {searched_Notes,archive_Notes,unarchive_Notes} from '../actions/notes'
+import AsyncStorage from '@react-native-community/async-storage';
+import AntDesign from 'react-native-vector-icons/AntDesign'
+import {searched_Notes,archive_Notes,
+add_Array_Archive_Notes,add_Notes} from '../actions/notes';
+import {Storage} from '../utils/Constants'
+  
 
 
 const DEVICE_WIDTH = Dimensions.get('window').width;
@@ -51,12 +56,12 @@ state = {
   data : [],
   gridView : true,
   visible : false,
+  onlyOnce : true,
 }
 
 setOnFocus=async()=>{
   this.props.archiveNotes.forEach((item,i)=> {
     item.selected = false
-    item.id = i+1;
   })
   this.setState({noteBook:this.props.archiveNotes})
   this.setState({searchBarActive:false})
@@ -70,17 +75,55 @@ setOnFocus=async()=>{
   }
 }
 
+shouldComponentUpdate(){
+  this.updateAsyncStorage()
+  return true;
+}
+
 componentWillUnmount(){
   console.log('called componentWillUnmount')
+  
 }
 
  componentDidMount(){
   this.focusListener = this.props.navigation.addListener('focus', () => {
     this.setOnFocus()
     console.log('called ComponentDidMount')
-
   })
+  this.setLocalDb()
+}
 
+componentDidUpdate(){
+  
+  console.log('this.props.archiveNotes',this.props.archiveNotes)
+}
+
+// update Async storage data 
+
+updateAsyncStorage=async()=>{
+  await AsyncStorage.setItem(Storage.Archive,JSON.stringify(this.props.archiveNotes))
+  .then(json => console.log('success !', json))
+  .catch(error => console.log('error in storing',error))
+}
+
+// Initially setting value of local database
+
+setLocalDb =async()=> {
+  try {
+    const db = await AsyncStorage.getItem(Storage.Archive)
+    const val = JSON.parse(db)
+    if (val != null) {
+      console.log('val',val)
+      if (this.state.onlyOnce){
+        this.props.addToArchiveArray(val)
+        this.setState({onlyOnce : false})
+      }
+    }else {
+      console.log('db is null')
+    }
+  }catch(error) {
+    console.log('error',error)
+  }
 }
 
 render() {
@@ -171,11 +214,8 @@ render() {
 
   const updateNote = (note) => {
 
-    this.props.archiveNotes.sort(function(a, b) {
-      return a.id > b.id
-    })
-
-    this.props.archiveNotes.splice(note.id - 1, 1);
+    const index = this.props.archiveNotes.indexOf(note.id);
+    this.props.archiveNotes.splice(index, 1);
 
     this.props.addToArchive(note)
 
@@ -193,7 +233,7 @@ render() {
     }
 
     showHideSnack()
-    //makeNewNotesByRegularId();
+    this.shouldComponentUpdate()
   }
 
 
@@ -240,25 +280,17 @@ render() {
             }
         }
 
-   makeNewNotesByRegularId();
-
+   
    // transfor value in searchable array
   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   this.setState({selectionMode:false})
   this.setState({tempNote: []})
+  this.shouldComponentUpdate()
   }catch(err){
     console.log(err)
   }
   }
 
-
-  // Update with new Id Notes after deleting Notes
-
-  const makeNewNotesByRegularId=()=> {
-    this.props.archiveNotes.forEach((item, i) => {
-      item.id = i + 1; // providing note id in noteBook array
-    });
-  }
 
 // Alert for delete Note
 
@@ -286,7 +318,7 @@ render() {
       this.archiveNotes = this.state.tempNote
       this.archiveNotes.forEach((item,i)=> {
         item.selected = false;
-        this.props.addToUnarchive(item)
+        this.props.addToNotes(item)
       })
 
       this.setState({selectionMode:false})
@@ -314,16 +346,24 @@ render() {
               }
           }
 
-    makeNewNotesByRegularId();
-
+   
+    updateAsyncStorageNotes()
      // transfor value in searchable array
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-
+    
     }catch(err){
       console.log(err)
     }
   }
+
+  // update Async storage data 
+
+ const updateAsyncStorageNotes=async()=>{
+    await AsyncStorage.setItem(Storage.Notes,JSON.stringify(this.props.notes))
+  .then(json => console.log('success !', json))
+  .catch(error => console.log('error in storing',error))
+}
 
   // Searching
 
@@ -357,7 +397,7 @@ render() {
 
   return(
       <>
-{!this.state.selectionMode ?
+  {!this.state.selectionMode ?
     <View style = {styles.appHeader}>
 
    <View style = {{width : 100,backgroundColor : Colors.indigo500, flex : 1,justifyContent : 'center',marginBottom : 15, height : '100%'}}>
@@ -456,6 +496,7 @@ render() {
       clearIcon = 'delete'
       clearButtonMode='always'
       style = {styles.searchBar}
+      autoFocus = {this.state.searchBarActive ? true : false}
       />
       </View>
     }
@@ -463,8 +504,9 @@ render() {
     <View style = {styles.container}>
       {this.props.archiveNotes.length == 0 ? (
       <View style = {styles.titleContainer}>
+      <AntDesign name = 'delete' size = {DEVICE_WIDTH/3} color = {Colors.indigo100} />
       <Text style = {styles.title}>
-        Archive Notes is Empty !!
+        No Notes in Archive !
       </Text>
       <View>
 
@@ -489,12 +531,14 @@ render() {
       renderItem={({item, index}) =>{
           return(
 
-            <View style = {this.state.gridView ? styles.cardParentGridView : styles.cardParentListView }>
-
+            
             <Card
 
               style = { this.state.gridView ? [styles.myCardNormal,{backgroundColor: item.selected ? Colors.APP_GRAY :'white'  }] : [styles.myListCard,{backgroundColor: item.selected ? Colors.APP_GRAY :'white'  }] }  key={index}  onLongPress = {()=> onLongPress(item)} onPress = {()=> onPress(item) } >
-
+              {item.selected && this.state.gridView ?
+              <AntDesign style = {{alignSelf:'flex-end', position:'absolute' }} name = 'checkcircle' size = {30} color = {Colors.indigo800} /> :
+              null
+              }
              <Animated.View style = {{ flex:1,alignItems: 'flex-start',marginLeft : 10, transform: [{rotate: spin}] }}>
              <Text numberOfLines = {1} style = {{marginBottom:13, marginTop:5, fontSize : 17, fontWeight : '500',width :'60%'}}>{item.noteTitle}</Text>
              <Text ellipsizeMode = 'tail' numberOfLines = {this.state.gridView ? 5 : 1} style = { this.state.gridView ? styles.descTextGrid : styles.descTextList }>{item.noteDescription}</Text>
@@ -508,7 +552,7 @@ render() {
             </View>
              </Animated.View>
              </Card>
-             </View>
+             
 
           )
           }
@@ -578,7 +622,7 @@ const styles = StyleSheet.create({
     //marginRight : 20,
   },
   title : {
-    fontSize : 20,
+    fontSize : 15,
   },
   parent: {
     width: '100%',
@@ -714,33 +758,45 @@ cardParentListView : {
   })
 },
   myCardNormal: {
-    //padding : 5,
+    borderRadius : 10,
+    backgroundColor:'white',
+    width: '48%',
+    margin: '1%',
+    aspectRatio: 1,
     ...Platform.select({
-      android : {
-          flex:1,
-        //backgroundColor : 'red',
-        width: '98%',
-        margin: '1%',
-        aspectRatio: 1,
-
-      },
-      ios : {
-        flex:1,
-    //  backgroundColor :
-      width: '98%',
-      margin: '1%',
-      aspectRatio: 1,
-
+      default : {
+        shadowColor: '#6b6162',
+        shadowOffset: {
+          width: 0,
+          height: 7,
+        },
+        shadowOpacity: 0.60,
+        shadowRadius: 5,
+        elevation: 5,
       }
     })
   },
-    myListCard : {
-    //  backgroundColor:
-     // borderWidth : 0.3,
-      width: '99.5%',
-      height : '99%',
 
-  },
+    myListCard : {
+      borderRadius : 5,
+      backgroundColor:'white',
+      borderWidth : 0.3,
+      width: '98%',
+      marginTop: '1.7%',
+      aspectRatio: 5/1,
+      ...Platform.select({
+        default : {
+          shadowColor: '#6b6162',
+          shadowOffset: {
+          width: 1,
+          height: 0.5,
+          },
+          shadowOpacity: 0.60,
+          shadowRadius: 5,
+          elevation: 5,
+        }
+      })
+    },
   myCardSelected: {
       //padding : 5,
       ...Platform.select({
@@ -777,7 +833,7 @@ const mapStateToProps= (state) => {
   console.log('archive Note state',state)
   return{
     searchedNotes : state.notesReducer.filteredNotes,
-    archiveNotes : state.notesReducer.notes,
+    archiveNotes : state.notesReducer.archiveNotes,
     notes : state.notesReducer.notesList
   }
 }
@@ -786,7 +842,8 @@ const mapDispatchToProps = dispatch => {
   return {
     addToSearched : (not) => dispatch(searched_Notes(not)),
     addToArchive : (notes) => dispatch(archive_Notes(notes)),
-    addToUnarchive : (notes) => dispatch(unarchive_Notes(notes))
+    addToNotes : (note) => dispatch(add_Notes(note)),
+    addToArchiveArray : (notes) => dispatch(add_Array_Archive_Notes(notes))
   }
 }
 
